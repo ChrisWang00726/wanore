@@ -32,6 +32,7 @@ import shutil
 import tempfile
 
 from fastapi.staticfiles import StaticFiles
+from app.services.audio_utils import iter_audio_chunks
 
 from concurrent.futures import ThreadPoolExecutor
 import time
@@ -256,12 +257,14 @@ def download_s3_audio_to_tempfile(s3_url: str) -> str:
     print("object_key =", object_key)
 
     s3 = boto3.client("s3")
-    response = s3.get_object(Bucket=bucket_name, Key=object_key)
-    audio_bytes = response["Body"].read()
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as temp_file:
-        temp_file.write(audio_bytes)
-        return temp_file.name
+    suffix = os.path.splitext(object_key)[1] or ".webm"
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+        temp_path = temp_file.name
+
+    s3.download_file(bucket_name, object_key, temp_path)
+    return temp_path
     
 def generate_presigned_audio_url(s3_url: str, expires_in: int = 3600) -> str:
     parsed = urlparse(s3_url)
@@ -323,46 +326,53 @@ def process_audio(
     if not meeting.audio_url:
         raise HTTPException(status_code=400, detail="No audio uploaded for this meeting")
 
-    chunk_paths = []
-    chunk_dir = None
     temp_audio_path = None
+    full_transcript_parts = []
+    chunk_summaries = []
 
     try:
         print("process_audio meeting.audio_url =", meeting.audio_url)
 
+        start_time = time.time()
+
         temp_audio_path = download_s3_audio_to_tempfile(meeting.audio_url)
         print("temp_audio_path =", temp_audio_path)
 
-        start_time = time.time()
-        chunk_paths = split_audio(temp_audio_path, chunk_length_minutes=10)
-        t1 = time.time()
-        print(f"Split time: {t1 - start_time:.2f}s")
+        chunk_count = 0
 
-        if not chunk_paths:
-            raise HTTPException(status_code=400, detail="Failed to split audio into chunks")
+        for chunk_path in iter_audio_chunks(temp_audio_path, chunk_length_minutes=10):
+            chunk_count += 1
+            chunk_start = time.time()
+            print(f"Processing chunk {chunk_count}: {chunk_path}")
 
-        chunk_dir = os.path.dirname(chunk_paths[0])
+            try:
+                transcript_text = transcribe_audio(chunk_path)
+                full_transcript_parts.append(transcript_text)
 
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            chunk_transcripts = list(executor.map(transcribe_audio, chunk_paths))
+                chunk_summary = summarize_text(transcript_text)
+                chunk_summaries.append(chunk_summary)
 
-        full_transcript = "\n\n".join(chunk_transcripts)
-        t2 = time.time()
-        print(f"Transcription time: {t2 - t1:.2f}s")
+            finally:
+                if os.path.exists(chunk_path):
+                    os.remove(chunk_path)
 
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            chunk_summaries = list(executor.map(summarize_text, chunk_transcripts))
+            chunk_end = time.time()
+            print(f"Chunk {chunk_count} finished in {chunk_end - chunk_start:.2f}s")
 
+        if chunk_count == 0:
+            raise HTTPException(status_code=400, detail="Failed to generate audio chunks")
+
+        full_transcript = "\n\n".join(full_transcript_parts)
         final_summary = summarize_chunks(chunk_summaries)
-        t3 = time.time()
-        print(f"Summarization time: {t3 - t2:.2f}s")
 
         meeting.transcript = full_transcript
         meeting.summary = final_summary
 
         db.commit()
         db.refresh(meeting)
-        print(f"Total time: {t3 - start_time:.2f}s")
+
+        end_time = time.time()
+        print(f"Total processing time: {end_time - start_time:.2f}s")
 
         return {
             "meeting_id": str(meeting.id),
@@ -377,15 +387,7 @@ def process_audio(
         db.rollback()
         print("process_audio error =", repr(e))
         raise HTTPException(status_code=500, detail=f"Audio processing failed: {str(e)}")
-
     finally:
-        for chunk_path in chunk_paths:
-            if os.path.exists(chunk_path):
-                os.remove(chunk_path)
-
-        if chunk_dir and os.path.exists(chunk_dir):
-            shutil.rmtree(chunk_dir, ignore_errors=True)
-
         if temp_audio_path and os.path.exists(temp_audio_path):
             os.remove(temp_audio_path)
 # =========================
