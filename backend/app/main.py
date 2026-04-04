@@ -27,7 +27,6 @@ from app.models.user import User
 from fastapi import HTTPException
 from app.services.transcription import transcribe_audio
 from app.services.summarization import summarize_text
-from app.services.audio_splitter import split_audio
 import shutil
 import tempfile
 
