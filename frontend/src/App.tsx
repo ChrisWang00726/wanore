@@ -56,6 +56,9 @@ export default function App() {
   const [shareEmail, setShareEmail] = useState("");
   const [shareStatus, setShareStatus] = useState("");
   const [isSharing, setIsSharing] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(
+    !!localStorage.getItem("access_token"),
+  );
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -74,23 +77,70 @@ export default function App() {
     useState<MeetingResponse | null>(null);
 
   useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
+    function renderGoogleButton() {
+      const el = document.getElementById("googleSignInDiv");
+      if (!el || !window.google) return;
+
+      el.innerHTML = "";
+
       window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         callback: handleCredentialResponse,
         auto_select: false,
       });
-      window.google.accounts.id.renderButton(
-        document.getElementById("googleSignInDiv"),
-        { theme: "outline", size: "large" },
-      );
-    };
+
+      window.google.accounts.id.renderButton(el, {
+        theme: "outline",
+        size: "large",
+      });
+    }
+
+    if (window.google) {
+      renderGoogleButton();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = renderGoogleButton;
 
     document.body.appendChild(script);
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    if (!token) return;
+
+    async function loadUser() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          localStorage.removeItem("access_token");
+          setIsLoggedIn(false);
+          setUserEmail("");
+          return;
+        }
+
+        setUserEmail(data.email || "");
+        setIsLoggedIn(true);
+        await fetchMeetings();
+      } catch (error) {
+        localStorage.removeItem("access_token");
+        setIsLoggedIn(false);
+        setUserEmail("");
+      }
+    }
+
+    loadUser();
   }, []);
 
   async function shareMeeting() {
@@ -143,7 +193,7 @@ export default function App() {
     try {
       resetAppState();
       setUserEmail("");
-      setMessage("Logging in...");
+      //setMessage("Logging in...");
 
       const res = await fetch(`${API_BASE_URL}/auth/google`, {
         method: "POST",
@@ -180,16 +230,17 @@ export default function App() {
         "Stored in localStorage:",
         localStorage.getItem("access_token"),
       );
+
       setCreatedMeeting(null);
       setSelectedMeeting(null);
-
       setMeetings({
         owned: [],
         shared: [],
       });
 
-      setIsSharing(false);
       setUserEmail(data.email);
+      setIsLoggedIn(true);
+      setMessage("");
       await fetchMeetings();
     } catch (error: any) {
       console.error(error);
@@ -225,6 +276,19 @@ export default function App() {
     setIsSharing(false);
   }
 
+  function handleLogout() {
+    localStorage.removeItem("access_token");
+
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.cancel();
+    }
+
+    resetAppState();
+    setUserEmail("");
+    setMessage("");
+    setIsLoggedIn(false);
+  }
+
   async function handleCreateMeeting(e: React.FormEvent) {
     e.preventDefault();
     setMeetingError("");
@@ -257,6 +321,7 @@ export default function App() {
       if (!response.ok) {
         throw new Error(data.detail || "Failed to create meeting");
       }
+
       setShareEmail("");
       setShareStatus("");
       setCreatedMeeting(data);
@@ -288,7 +353,6 @@ export default function App() {
       setUploadStatus("");
       setAudioUrl("");
       setAudioBlob(null);
-      setRecordingStatus("Requesting microphone and tab audio...");
 
       const micStream = await navigator.mediaDevices.getUserMedia({
         audio: true,
@@ -349,19 +413,17 @@ export default function App() {
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);
 
-        setRecordingStatus("Recording complete");
-
         micStream.getTracks().forEach((track) => track.stop());
         displayStream.getTracks().forEach((track) => track.stop());
         audioContext.close();
         streamRef.current = null;
+
         console.log("blob type:", blob.type);
         console.log("MediaRecorder mimeType:", mediaRecorder.mimeType);
       };
 
       mediaRecorder.start();
       setIsRecording(true);
-      setRecordingStatus("Recording started. Make sure tab audio is enabled.");
     } catch (error: any) {
       console.error("startRecording error:", error);
       setRecordingStatus(
@@ -377,7 +439,6 @@ export default function App() {
 
     mediaRecorderRef.current.stop();
     setIsRecording(false);
-    setRecordingStatus("Stopping recording...");
   }
 
   async function uploadAudio() {
@@ -462,10 +523,12 @@ export default function App() {
         throw new Error(data.detail || "Failed to process audio");
       }
 
-      setGeneratedTranscript(data.transcript || "");
-      setGeneratedSummary(data.summary || "");
       setProcessStatus("Summary generated successfully");
       await fetchMeetings();
+      await loadMeeting(createdMeeting.id);
+
+      setGeneratedTranscript("");
+      setGeneratedSummary("");
     } catch (error: any) {
       console.error(error);
       setProcessStatus(error.message || "Processing failed");
@@ -485,10 +548,12 @@ export default function App() {
     });
 
     const data = await res.json();
+
     if (res.ok) {
       setMeetings(data);
     }
   }
+
   async function fetchPlayableAudioUrl(meetingId: string) {
     const token = getToken();
 
@@ -547,6 +612,7 @@ export default function App() {
       });
     }
   }
+
   function getToken() {
     const token = localStorage.getItem("access_token");
     if (!token) {
@@ -561,55 +627,161 @@ export default function App() {
     return `${API_BASE_URL}/${url.replace(/^\/+/, "")}`;
   }
 
-  return (
-    <div style={{ padding: "2rem" }}>
-      <h1>Wanore</h1>
-
-      <div id="googleSignInDiv"></div>
-      <p>{message}</p>
-      {userEmail && <p>Logged in as: {userEmail}</p>}
-
-      <hr style={{ margin: "2rem 0" }} />
-
-      {/* CENTERED CONTAINER */}
-      <div style={{ width: "1044px" }}>
+  if (!isLoggedIn) {
+    return (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#f5f6f8",
+        }}
+      >
         <div
           style={{
-            display: "flex",
-            gap: "24px",
-            alignItems: "flex-start",
+            background: "white",
+            padding: "40px",
+            borderRadius: "16px",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
+            textAlign: "center",
+            width: "320px",
           }}
         >
-          {/* LEFT SIDE (FIXED) */}
-          <div style={{ width: "320px", flexShrink: 0 }}>
-            <RecordingPanel
-              title={title}
-              setTitle={setTitle}
-              handleCreateMeeting={handleCreateMeeting}
-              loadingMeeting={loadingMeeting}
-              meetingError={meetingError}
-              createdMeeting={createdMeeting}
-              isRecording={isRecording}
-              startRecording={startRecording}
-              stopRecording={stopRecording}
-              recordingStatus={recordingStatus}
-              audioUrl={audioUrl}
-              audioBlob={audioBlob}
-              uploadAudio={uploadAudio}
-              isUploading={isUploading}
-              uploadStatus={uploadStatus}
-              generateSummary={generateSummary}
-              processingSummary={processingSummary}
-              processStatus={processStatus}
-              generatedSummary={generatedSummary}
-              generatedTranscript={generatedTranscript}
-            />
+          <h1 style={{ margin: "0 0 10px 0", color: "#111827" }}>Wanore</h1>
+          <p style={{ margin: "0 0 20px 0", color: "#4b5563" }}>Snapshots</p>
 
-            <MeetingList meetings={meetings} onSelect={loadMeeting} />
+          <div
+            id="googleSignInDiv"
+            style={{ display: "flex", justifyContent: "center" }}
+          ></div>
+
+          <p style={{ marginTop: "10px", color: "red" }}>{message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        background: "#f5f6f8",
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          flex: 1,
+        }}
+      >
+        <div
+          style={{
+            width: "380px",
+            flexShrink: 0,
+            background: "#0f2233",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            overflowY: "hidden",
+          }}
+        >
+          <RecordingPanel
+            title={title}
+            setTitle={setTitle}
+            handleCreateMeeting={handleCreateMeeting}
+            loadingMeeting={loadingMeeting}
+            meetingError={meetingError}
+            createdMeeting={createdMeeting}
+            isRecording={isRecording}
+            startRecording={startRecording}
+            stopRecording={stopRecording}
+            recordingStatus={recordingStatus}
+            audioUrl={audioUrl}
+            audioBlob={audioBlob}
+            uploadAudio={uploadAudio}
+            isUploading={isUploading}
+            uploadStatus={uploadStatus}
+            generateSummary={generateSummary}
+            processingSummary={processingSummary}
+            processStatus={processStatus}
+            generatedSummary={generatedSummary}
+            generatedTranscript={generatedTranscript}
+          />
+
+          <MeetingList
+            meetings={meetings}
+            onSelect={loadMeeting}
+            selectedMeetingId={selectedMeeting?.id || null}
+          />
+        </div>
+
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            padding: "24px",
+          }}
+        >
+          {/* TOP RIGHT LOGOUT */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "center",
+              gap: "12px",
+              marginBottom: "16px",
+            }}
+          >
+            {/* EMAIL */}
+            <span
+              style={{
+                fontSize: "13px",
+                color: "#64748b",
+                fontWeight: 500,
+                maxWidth: "220px",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+              title={userEmail}
+            >
+              {userEmail}
+            </span>
+
+            {/* LOGOUT BUTTON */}
+            <button
+              onClick={handleLogout}
+              style={{
+                padding: "8px 14px",
+                borderRadius: "999px",
+                border: "1px solid #e2e8f0",
+                background: "#ffffff",
+                color: "#334155",
+                fontSize: "13px",
+                fontWeight: 500,
+                cursor: "pointer",
+                transition: "all 0.18s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#f8fafc";
+                e.currentTarget.style.borderColor = "#cbd5e1";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "#ffffff";
+                e.currentTarget.style.borderColor = "#e2e8f0";
+              }}
+            >
+              Log out
+            </button>
           </div>
 
-          {/* RIGHT SIDE (FIXED) */}
-          <div style={{ width: "700px", flexShrink: 0 }}>
+          {/* MEETING VIEW */}
+          <div style={{ flex: 1 }}>
             <MeetingView
               meeting={selectedMeeting}
               normalizeAudioUrl={normalizeAudioUrl}
