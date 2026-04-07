@@ -48,7 +48,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
-        "wanore-nlt2667xy-chriswang2607-7130s-projects.vercel.app",
+        "https://wanore.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
