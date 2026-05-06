@@ -215,6 +215,18 @@ export default function RecordingPanel({
               </button>
             )}
           </div>
+          {isRecording && (
+            <p
+              style={{
+                marginTop: "10px",
+                fontSize: "12px",
+                color: "#fca5a5",
+                lineHeight: 1.4,
+              }}
+            >
+              Please do not reload or close the page while recording.
+            </p>
+          )}
 
           {recordingStatus && (
             <p
@@ -237,13 +249,13 @@ export default function RecordingPanel({
             </div>
           )}
 
-          {audioBlob && !createdMeeting.audio_url && (
+          {/* {audioBlob && !createdMeeting.audio_url && (
             <p
               style={{ marginTop: "12px", fontSize: "13px", color: "#94a3b8" }}
             >
               {isUploading ? "Uploading audio..." : "Preparing upload..."}
             </p>
-          )}
+          )} */}
 
           {uploadStatus && (
             <p
