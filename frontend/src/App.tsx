@@ -421,7 +421,7 @@ export default function App() {
 
       mediaRecorder.start();
       setIsRecording(true);
-      setRecordingStatus("Recording...");
+      setRecordingStatus("");
     } catch (error: any) {
       console.error("startRecording error:", error);
       setRecordingStatus(
