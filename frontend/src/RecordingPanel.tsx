@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 
 type MeetingResponse = {
   id: string;
@@ -62,6 +62,20 @@ export default function RecordingPanel({
   generatedSummary,
   generatedTranscript,
 }: Props) {
+  useEffect(() => {
+    if (
+      audioBlob &&
+      createdMeeting &&
+      !createdMeeting.audio_url &&
+      !isUploading
+    ) {
+      uploadAudio();
+    }
+  }, [audioBlob, createdMeeting, isUploading, uploadAudio]);
+
+  const canGenerateSummary =
+    createdMeeting?.audio_url && !createdMeeting?.summary;
+
   return (
     <div
       style={{
@@ -93,6 +107,7 @@ export default function RecordingPanel({
           Snapshots
         </p>
       </div>
+
       <div
         style={{
           height: "1px",
@@ -101,6 +116,7 @@ export default function RecordingPanel({
           margin: "20px -24px 24px -24px",
         }}
       />
+
       <h2
         style={{
           margin: "0 0 12px 0",
@@ -111,6 +127,7 @@ export default function RecordingPanel({
       >
         New Snapshot
       </h2>
+
       <form onSubmit={handleCreateMeeting}>
         <div style={{ display: "flex", gap: "8px" }}>
           <input
@@ -200,18 +217,15 @@ export default function RecordingPanel({
           </div>
 
           {recordingStatus && (
-            <p style={{ marginTop: "12px", color: "#4b5563" }}>
+            <p
+              style={{ marginTop: "12px", color: "#94a3b8", fontSize: "13px" }}
+            >
               {recordingStatus}
             </p>
           )}
 
           {audioUrl && (
-            <div
-              style={{
-                marginTop: "12px",
-                maxWidth: "100%",
-              }}
-            >
+            <div style={{ marginTop: "12px", maxWidth: "100%" }}>
               <audio
                 controls
                 src={audioUrl}
@@ -223,26 +237,12 @@ export default function RecordingPanel({
             </div>
           )}
 
-          {audioBlob && (
-            <div style={{ marginTop: "16px" }}>
-              <button
-                onClick={uploadAudio}
-                disabled={isUploading || processingSummary}
-                style={{
-                  height: "36px",
-                  padding: "0 14px",
-                  borderRadius: "10px",
-                  border: "none",
-                  background: "#8bb8c7",
-                  color: "#0f2233",
-                  fontWeight: 500,
-                  fontSize: "13px",
-                  cursor: "pointer",
-                }}
-              >
-                {isUploading ? "Uploading..." : "Upload Audio"}
-              </button>
-            </div>
+          {audioBlob && !createdMeeting.audio_url && (
+            <p
+              style={{ marginTop: "12px", fontSize: "13px", color: "#94a3b8" }}
+            >
+              {isUploading ? "Uploading audio..." : "Preparing upload..."}
+            </p>
           )}
 
           {uploadStatus && (
@@ -258,7 +258,7 @@ export default function RecordingPanel({
             </p>
           )}
 
-          {uploadStatus === "Upload successful" && (
+          {canGenerateSummary && (
             <div style={{ marginTop: "16px" }}>
               <button
                 onClick={generateSummary}
@@ -297,10 +297,10 @@ export default function RecordingPanel({
 
           {generatedSummary && (
             <div style={{ marginTop: "20px" }}>
-              <h3 style={{ margin: "0 0 10px 0", color: "#111827" }}>
+              <h3 style={{ margin: "0 0 10px 0", color: "white" }}>
                 Generated Summary
               </h3>
-              <p style={{ margin: 0, color: "#374151", lineHeight: 1.6 }}>
+              <p style={{ margin: 0, color: "#94a3b8", lineHeight: 1.6 }}>
                 {generatedSummary}
               </p>
             </div>
@@ -308,10 +308,10 @@ export default function RecordingPanel({
 
           {generatedTranscript && (
             <div style={{ marginTop: "20px" }}>
-              <h3 style={{ margin: "0 0 10px 0", color: "#111827" }}>
+              <h3 style={{ margin: "0 0 10px 0", color: "white" }}>
                 Transcript
               </h3>
-              <p style={{ margin: 0, color: "#374151", lineHeight: 1.6 }}>
+              <p style={{ margin: 0, color: "#94a3b8", lineHeight: 1.6 }}>
                 {generatedTranscript}
               </p>
             </div>

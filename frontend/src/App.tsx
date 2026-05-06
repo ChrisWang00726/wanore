@@ -76,6 +76,8 @@ export default function App() {
   const [selectedMeeting, setSelectedMeeting] =
     useState<MeetingResponse | null>(null);
 
+  const activeMeeting = createdMeeting || selectedMeeting;
+
   useEffect(() => {
     function renderGoogleButton() {
       const el = document.getElementById("googleSignInDiv");
@@ -443,7 +445,7 @@ export default function App() {
 
   async function uploadAudio() {
     try {
-      if (!createdMeeting) {
+      if (!activeMeeting) {
         throw new Error("No meeting selected");
       }
 
@@ -460,7 +462,7 @@ export default function App() {
       formData.append("file", audioBlob, "recording.webm");
 
       const response = await fetch(
-        `${API_BASE_URL}/meetings/${createdMeeting.id}/upload-audio`,
+        `${API_BASE_URL}/meetings/${activeMeeting.id}/upload-audio`,
         {
           method: "POST",
           headers: {
@@ -476,16 +478,10 @@ export default function App() {
         throw new Error(data.detail || "Upload failed");
       }
 
-      setCreatedMeeting((prev) =>
-        prev
-          ? {
-              ...prev,
-              audio_url: data.audio_url,
-            }
-          : prev,
-      );
-
       setUploadStatus("Upload successful");
+
+      await fetchMeetings();
+      await loadMeeting(activeMeeting.id);
     } catch (error: any) {
       console.error(error);
       setUploadStatus(error.message || "Upload failed");
@@ -496,7 +492,7 @@ export default function App() {
 
   async function generateSummary() {
     try {
-      if (!createdMeeting) {
+      if (!activeMeeting) {
         throw new Error("No meeting selected");
       }
 
@@ -508,7 +504,7 @@ export default function App() {
       setGeneratedSummary("");
 
       const response = await fetch(
-        `${API_BASE_URL}/meetings/${createdMeeting.id}/process-audio`,
+        `${API_BASE_URL}/meetings/${activeMeeting.id}/process-audio`,
         {
           method: "POST",
           headers: {
@@ -524,11 +520,9 @@ export default function App() {
       }
 
       setProcessStatus("Summary generated successfully");
-      await fetchMeetings();
-      await loadMeeting(createdMeeting.id);
 
-      setGeneratedTranscript("");
-      setGeneratedSummary("");
+      await fetchMeetings();
+      await loadMeeting(activeMeeting.id);
     } catch (error: any) {
       console.error(error);
       setProcessStatus(error.message || "Processing failed");
