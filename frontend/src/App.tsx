@@ -437,7 +437,7 @@ export default function App() {
 
     mediaRecorderRef.current.stop();
     setIsRecording(false);
-    setRecordingStatus("Recording stopped. Uploading audio...");
+    setRecordingStatus("");
   }
 
   async function uploadAudio() {
