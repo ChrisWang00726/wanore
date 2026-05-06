@@ -496,9 +496,7 @@ export default function App() {
 
   async function generateSummary() {
     try {
-      const activeMeeting = createdMeeting || selectedMeeting;
-
-      if (!activeMeeting) {
+      if (!createdMeeting) {
         throw new Error("No meeting selected");
       }
 
@@ -510,7 +508,7 @@ export default function App() {
       setGeneratedSummary("");
 
       const response = await fetch(
-        `${API_BASE_URL}/meetings/${activeMeeting.id}/process-audio`,
+        `${API_BASE_URL}/meetings/${createdMeeting.id}/process-audio`,
         {
           method: "POST",
           headers: {
@@ -527,7 +525,7 @@ export default function App() {
 
       setProcessStatus("Summary generated successfully");
       await fetchMeetings();
-      await loadMeeting(activeMeeting.id);
+      await loadMeeting(createdMeeting.id);
 
       setGeneratedTranscript("");
       setGeneratedSummary("");
@@ -698,7 +696,6 @@ export default function App() {
             loadingMeeting={loadingMeeting}
             meetingError={meetingError}
             createdMeeting={createdMeeting}
-            selectedMeeting={selectedMeeting}
             isRecording={isRecording}
             startRecording={startRecording}
             stopRecording={stopRecording}
