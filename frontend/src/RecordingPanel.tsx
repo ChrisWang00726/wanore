@@ -220,11 +220,12 @@ export default function RecordingPanel({
               style={{
                 marginTop: "10px",
                 fontSize: "12px",
-                color: "#fca5a5",
+                color: "#94a3b8",
                 lineHeight: 1.4,
               }}
             >
-              Please do not reload or close the page while recording.
+              Please do not reload or close the page while recording or
+              uploading.
             </p>
           )}
 
