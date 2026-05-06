@@ -689,7 +689,7 @@ export default function App() {
             handleCreateMeeting={handleCreateMeeting}
             loadingMeeting={loadingMeeting}
             meetingError={meetingError}
-            createdMeeting={createdMeeting}
+            createdMeeting={activeMeeting}
             isRecording={isRecording}
             startRecording={startRecording}
             stopRecording={stopRecording}
