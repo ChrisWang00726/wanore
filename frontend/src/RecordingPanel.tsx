@@ -56,7 +56,6 @@ export default function RecordingPanel({
   uploadAudio,
   isUploading,
   uploadStatus,
-  generateSummary,
   processingSummary,
   processStatus,
   generatedSummary,
@@ -72,9 +71,6 @@ export default function RecordingPanel({
       uploadAudio();
     }
   }, [audioBlob, createdMeeting, isUploading, uploadAudio]);
-
-  const canGenerateSummary =
-    createdMeeting?.audio_url && !createdMeeting?.summary;
 
   return (
     <div
@@ -269,28 +265,6 @@ export default function RecordingPanel({
             >
               {uploadStatus}
             </p>
-          )}
-
-          {canGenerateSummary && (
-            <div style={{ marginTop: "16px" }}>
-              <button
-                onClick={generateSummary}
-                disabled={processingSummary || isUploading}
-                style={{
-                  height: "36px",
-                  padding: "0 14px",
-                  borderRadius: "10px",
-                  border: "none",
-                  background: "#8bb8c7",
-                  color: "#0f2233",
-                  fontWeight: 500,
-                  fontSize: "13px",
-                  cursor: "pointer",
-                }}
-              >
-                {processingSummary ? "Processing..." : "Generate Summary"}
-              </button>
-            </div>
           )}
 
           {processStatus && (

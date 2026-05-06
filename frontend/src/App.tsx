@@ -195,7 +195,6 @@ export default function App() {
     try {
       resetAppState();
       setUserEmail("");
-      //setMessage("Logging in...");
 
       const res = await fetch(`${API_BASE_URL}/auth/google`, {
         method: "POST",
@@ -214,6 +213,7 @@ export default function App() {
       }
 
       localStorage.setItem("access_token", data.access_token);
+
       const meRes = await fetch(`${API_BASE_URL}/me`, {
         headers: {
           Authorization: `Bearer ${data.access_token}`,
@@ -225,13 +225,6 @@ export default function App() {
       if (!meRes.ok) {
         throw new Error(meData.detail || "Failed to fetch /me");
       }
-
-      console.log("/me success:", meData);
-      console.log("Stored backend token:", data.access_token);
-      console.log(
-        "Stored in localStorage:",
-        localStorage.getItem("access_token"),
-      );
 
       setCreatedMeeting(null);
       setSelectedMeeting(null);
@@ -297,6 +290,7 @@ export default function App() {
     setCreatedMeeting(null);
 
     const trimmedTitle = title.trim();
+
     if (!trimmedTitle) {
       setMeetingError("Title is required");
       return;
@@ -355,6 +349,7 @@ export default function App() {
       setUploadStatus("");
       setAudioUrl("");
       setAudioBlob(null);
+      setRecordingStatus("");
 
       const micStream = await navigator.mediaDevices.getUserMedia({
         audio: true,
@@ -426,6 +421,7 @@ export default function App() {
 
       mediaRecorder.start();
       setIsRecording(true);
+      setRecordingStatus("Recording...");
     } catch (error: any) {
       console.error("startRecording error:", error);
       setRecordingStatus(
@@ -441,6 +437,7 @@ export default function App() {
 
     mediaRecorderRef.current.stop();
     setIsRecording(false);
+    setRecordingStatus("Recording stopped. Uploading audio...");
   }
 
   async function uploadAudio() {
@@ -453,16 +450,18 @@ export default function App() {
         throw new Error("No audio recording available");
       }
 
+      const meetingId = activeMeeting.id;
       const token = getToken();
 
       setIsUploading(true);
       setUploadStatus("Uploading audio...");
+      setProcessStatus("");
 
       const formData = new FormData();
       formData.append("file", audioBlob, "recording.webm");
 
       const response = await fetch(
-        `${API_BASE_URL}/meetings/${activeMeeting.id}/upload-audio`,
+        `${API_BASE_URL}/meetings/${meetingId}/upload-audio`,
         {
           method: "POST",
           headers: {
@@ -479,9 +478,9 @@ export default function App() {
       }
 
       setUploadStatus("Upload successful");
-
       await fetchMeetings();
-      await loadMeeting(activeMeeting.id);
+
+      await generateSummaryForMeeting(meetingId);
     } catch (error: any) {
       console.error(error);
       setUploadStatus(error.message || "Upload failed");
@@ -490,12 +489,8 @@ export default function App() {
     }
   }
 
-  async function generateSummary() {
+  async function generateSummaryForMeeting(meetingId: string) {
     try {
-      if (!activeMeeting) {
-        throw new Error("No meeting selected");
-      }
-
       const token = getToken();
 
       setProcessingSummary(true);
@@ -504,7 +499,7 @@ export default function App() {
       setGeneratedSummary("");
 
       const response = await fetch(
-        `${API_BASE_URL}/meetings/${activeMeeting.id}/process-audio`,
+        `${API_BASE_URL}/meetings/${meetingId}/process-audio`,
         {
           method: "POST",
           headers: {
@@ -519,15 +514,29 @@ export default function App() {
         throw new Error(data.detail || "Failed to process audio");
       }
 
-      setProcessStatus("Summary generated successfully");
-
       await fetchMeetings();
-      await loadMeeting(activeMeeting.id);
+      await loadMeeting(meetingId);
+
+      setProcessStatus("Summary generated successfully");
     } catch (error: any) {
       console.error(error);
       setProcessStatus(error.message || "Processing failed");
+      throw error;
     } finally {
       setProcessingSummary(false);
+    }
+  }
+
+  async function generateSummary() {
+    try {
+      if (!activeMeeting) {
+        throw new Error("No meeting selected");
+      }
+
+      await generateSummaryForMeeting(activeMeeting.id);
+    } catch (error: any) {
+      console.error(error);
+      setProcessStatus(error.message || "Processing failed");
     }
   }
 
@@ -594,7 +603,6 @@ export default function App() {
       setShareStatus("");
       setGeneratedSummary("");
       setGeneratedTranscript("");
-      setProcessStatus("");
       setUploadStatus("");
       setAudioUrl("");
       setAudioBlob(null);
@@ -609,9 +617,11 @@ export default function App() {
 
   function getToken() {
     const token = localStorage.getItem("access_token");
+
     if (!token) {
       throw new Error("You must log in first");
     }
+
     return token;
   }
 
@@ -721,7 +731,6 @@ export default function App() {
             padding: "24px",
           }}
         >
-          {/* TOP RIGHT LOGOUT */}
           <div
             style={{
               display: "flex",
@@ -731,7 +740,6 @@ export default function App() {
               marginBottom: "16px",
             }}
           >
-            {/* EMAIL */}
             <span
               style={{
                 fontSize: "13px",
@@ -747,7 +755,6 @@ export default function App() {
               {userEmail}
             </span>
 
-            {/* LOGOUT BUTTON */}
             <button
               onClick={handleLogout}
               style={{
@@ -774,7 +781,6 @@ export default function App() {
             </button>
           </div>
 
-          {/* MEETING VIEW */}
           <div style={{ flex: 1 }}>
             <MeetingView
               meeting={selectedMeeting}
