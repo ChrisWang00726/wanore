@@ -1,0 +1,100 @@
+
+# Wanore
+
+Wanore is an AI-powered meeting management platform that transforms meeting recordings into searchable transcripts, concise summaries, and actionable tasks. Designed for teams and professionals, Wanore helps users spend less time reviewing meetings and more time acting on key decisions.
+
+## Features
+
+* Upload and store meeting recordings
+* AI-powered transcription using OpenAI
+* Automatic meeting summaries
+* Action item extraction and task tracking
+* Secure authentication with Google OAuth and JWT
+* Collaborative meeting management
+* Cloud-based audio storage with AWS S3
+* Responsive and intuitive user interface
+
+## Demo
+
+**Live Application:** https://wanore.vercel.app/
+
+## Tech Stack
+
+### Frontend
+
+* React Native
+* TypeScript
+
+### Backend
+
+* FastAPI
+* Python
+* SQLAlchemy
+* PostgreSQL
+
+### Authentication
+
+* Google OAuth
+* JWT Authentication
+
+### Cloud & Infrastructure
+
+* AWS S3
+* Vercel
+
+### AI Integration
+
+* OpenAI API
+
+## Architecture
+
+1. Users authenticate using Google OAuth.
+2. Meeting recordings are uploaded and stored in AWS S3.
+3. The backend processes audio files asynchronously.
+4. OpenAI APIs generate transcripts, summaries, and action items.
+5. Processed meeting insights are stored in PostgreSQL.
+6. Users can view, search, and collaborate on meeting notes through the application
+
+## Installation
+
+### Clone the Repository
+
+```bash
+git clone [<repository-url>](https://github.com/ChrisWang00726/wanore)
+cd wanore
+```
+
+### Frontend Setup
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### Backend Setup
+
+```bash
+cd backend
+
+python -m venv venv
+venv\Scripts\activate
+
+pip install -r requirements.txt
+
+uvicorn main:app --reload
+```
+
+### Environment Variables
+
+Create a `.env` file and configure:
+
+```env
+OPENAI_API_KEY=your_api_key
+DATABASE_URL=your_database_url
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_BUCKET_NAME=your_bucket_name
+GOOGLE_CLIENT_ID=your_google_client_id
+JWT_SECRET_KEY=your_jwt_secret
+```
