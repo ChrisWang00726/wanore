@@ -41,6 +41,8 @@ Wanore is an AI-powered meeting management platform that transforms meeting reco
 
 * AWS S3
 * Vercel
+* Render
+* Supabase
 
 ### AI Integration
 
@@ -87,14 +89,21 @@ uvicorn main:app --reload
 
 ### Environment Variables
 
-Create a `.env` file and configure:
+Create a `.env` file in the backend directory:
 
 ```env
-OPENAI_API_KEY=your_api_key
-DATABASE_URL=your_database_url
-AWS_ACCESS_KEY_ID=your_access_key
-AWS_SECRET_ACCESS_KEY=your_secret_key
-AWS_BUCKET_NAME=your_bucket_name
+OPENAI_API_KEY=your_openai_api_key
+JWT_SECRET=your_jwt_secret
 GOOGLE_CLIENT_ID=your_google_client_id
-JWT_SECRET_KEY=your_jwt_secret
+DATABASE_URL=your_database_url
+AWS_ACCESS_KEY_ID=your_aws_access_key_id
+AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key
+AWS_REGION=your_aws_region   
+S3_BUCKET_NAME=your_s3_bucket_name
+```
+Create a `.env` file in the frontend directory:
+
+```env
+VITE_API_BASE_URL=your_backend_api_url
+VITE_GOOGLE_CLIENT_ID=your_google_client_id
 ```
