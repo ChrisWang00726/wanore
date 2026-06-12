@@ -73,20 +73,6 @@ cd frontend
 npm install
 npm run dev
 ```
-
-### Backend Setup
-
-```bash
-cd backend
-
-python -m venv venv
-venv\Scripts\activate
-
-pip install -r requirements.txt
-
-uvicorn main:app --reload
-```
-
 ### Environment Variables
 
 Create a `.env` file in the backend directory:
@@ -106,4 +92,17 @@ Create a `.env` file in the frontend directory:
 ```env
 VITE_API_BASE_URL=your_backend_api_url
 VITE_GOOGLE_CLIENT_ID=your_google_client_id
+```
+
+### Backend Setup
+
+```bash
+cd backend
+
+python -m venv venv
+venv\Scripts\activate
+
+pip install -r requirements.txt
+
+uvicorn main:app --reload
 ```
