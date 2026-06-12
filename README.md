@@ -22,7 +22,7 @@ Wanore is an AI-powered meeting management platform that transforms meeting reco
 
 ### Frontend
 
-* React Native
+* React
 * TypeScript
 
 ### Backend
@@ -62,7 +62,7 @@ Wanore is an AI-powered meeting management platform that transforms meeting reco
 ### Clone the Repository
 
 ```bash
-git clone [<repository-url>](https://github.com/ChrisWang00726/wanore)
+git clone https://github.com/ChrisWang00726/wanore
 cd wanore
 ```
 
