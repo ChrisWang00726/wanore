@@ -66,13 +66,6 @@ git clone https://github.com/ChrisWang00726/wanore
 cd wanore
 ```
 
-### Frontend Setup
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
 ### Environment Variables
 
 Create a `.env` file in the backend directory:
@@ -92,6 +85,14 @@ Create a `.env` file in the frontend directory:
 ```env
 VITE_API_BASE_URL=your_backend_api_url
 VITE_GOOGLE_CLIENT_ID=your_google_client_id
+```
+
+### Frontend Setup
+
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
 ### Backend Setup
